@@ -1,0 +1,20 @@
+{
+  "name": "raw-to",
+  "version": "0.1.0",
+  "dependencies": {
+    "dist-exiftool": "^10.53.0",
+    "fs-extra": "^5.0.0",
+    "node-exiftool": "^2.3.0",
+    "sharp": "^0.20.1"
+  },
+  "standard": {
+    "parser": "babel-eslint"
+  },
+  "devDependencies": {
+    "babel-eslint": "^8.2.3",
+    "standard": "^11.0.1"
+  },
+  "bin": {
+    "raw-to": "./cli.js"
+  }
+}
