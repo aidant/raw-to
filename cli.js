@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const rawTo = require('.')
 
 const [format, input, output] = process.argv.splice(2)
