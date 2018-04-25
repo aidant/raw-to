@@ -20,9 +20,10 @@ function validatePaths (input, output) {
 
 async function convertImage (input, output, { format, log }) {
   let metadata = await ep.readMetadata(input, ['b', 'JpgFromRaw'])
+  const meta = metadata.data[0]
   const parsedMetadata = {
-    data: Buffer.from(metadata.data[0].JpgFromRaw.replace(/^base64:/, ''), 'base64'),
-    path: metadata.data[0].SourceFile
+    data: Buffer.from(meta.JpgFromRaw.replace(/^base64:/, ''), 'base64'),
+    path: meta.SourceFile
   }
   const file = await new Promise((resolve, reject) => {
     const name = path.join(output, path.parse(parsedMetadata.path).name + '.' + format)
@@ -46,7 +47,7 @@ module.exports = async (input, output, { format = 'jpeg', log = false } = {}) =>
   validateFormat(format)
   await fs.ensureDir(output)
   let files = await fs.readdir(input)
-  files = files.filter((file) => /^\.nef$/i.test(path.parse(file).ext))
+  files = files.filter((file) => /^\.(nef|raw)$/i.test(path.parse(file).ext))
   await ep.open()
   const result = []
   try {
