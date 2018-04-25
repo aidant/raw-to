@@ -18,39 +18,47 @@ function validatePaths (input, output) {
   if (typeof output !== 'string') throw new TypeError('output is required')
 }
 
-module.exports = async (input, output, { format = 'jpeg' } = {}) => {
+async function convertImage (input, output, { format, log }) {
+  let metadata = await ep.readMetadata(input, ['b', 'JpgFromRaw'])
+  const parsedMetadata = {
+    data: Buffer.from(metadata.data[0].JpgFromRaw.replace(/^base64:/, ''), 'base64'),
+    path: metadata.data[0].SourceFile
+  }
+  const file = await new Promise((resolve, reject) => {
+    const name = path.join(output, path.parse(parsedMetadata.path).name + '.' + format)
+    const stream = fs.createWriteStream(name)
+      .on('error', (error) => {
+        reject(error)
+      })
+      .on('finish', () => {
+        resolve(name)
+      })
+
+    sharp(parsedMetadata.data)
+      .toFormat(format)
+      .pipe(stream)
+  })
+  return file
+}
+
+module.exports = async (input, output, { format = 'jpeg', log = false } = {}) => {
   validatePaths(input, output)
   validateFormat(format)
   await fs.ensureDir(output)
+  let files = await fs.readdir(input)
+  files = files.filter((file) => /^\.nef$/i.test(path.parse(file).ext))
+  await ep.open()
+  const result = []
   try {
-    await ep.open()
-    let metadata = await ep.readMetadata(input, ['b', 'JpgFromRaw'])
-    const imageMetadata = (metadata.data instanceof Array) ? metadata.data : [metadata.data]
-    const parsedMetadata = imageMetadata
-      .filter(meta => meta && !!meta.JpgFromRaw)
-      .map(meta => ({
-        data: Buffer.from(meta.JpgFromRaw.replace(/^base64:/, ''), 'base64'),
-        path: meta.SourceFile
-      }))
-    const promises = parsedMetadata.map(meta => new Promise((resolve, reject) => {
-      const name = path.join(output, path.parse(meta.path).name + '.' + format)
-      const stream = fs.createWriteStream(name)
-        .on('error', (error) => {
-          reject(error)
-        })
-        .on('finish', () => {
-          resolve(name)
-        })
-
-      sharp(meta.data)
-        .toFormat(format)
-        .pipe(stream)
-    }))
-    const files = await Promise.all(promises)
+    for (const file of files) {
+      const image = await convertImage(file, output, { format })
+      if (log) console.log('Finished converting:', file)
+      result.push(image)
+    }
     ep.close()
-    return files
-  } catch (error) {
+    return result
+  } catch (e) {
     ep.close()
-    throw error
+    throw e
   }
 }
